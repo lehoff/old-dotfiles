@@ -42,17 +42,39 @@
      ;;(spacemacs/declare-prefix-for-mode 'notmuch-show-mode "n" "notmuch")
      ;;(spacemacs/declare-prefix-for-mode 'notmuch-show-mode "n." "MIME parts")
 
+     (defun lehoff/notmuch-trash (&optional beg end)
+       "trash by removing inbox and adding trash"
+       (interactive (notmuch-search-interactive-region))
+       (notmuch-search-tag (list "-inbox" "+trash") beg end)
+       (when (eq beg end)
+         (notmuch-search-next-thread)))
+
+     (defun lehoff/notmuch-trash-show ()
+       "trash shown msg by removing inbox and adding trash"
+       (interactive)
+       (notmuch-show-add-tag (list "-inbox" "+trash"))
+       (unless (notmuch-show-next-open-message)
+         (notmuch-show-next-thread t)))
+
+     (defun lehoff/compose-mail-other-frame ()
+       "create a new frame for the mail composition"
+       (compose-mail-other-frame))
+
      (evilified-state-evilify notmuch-hello-mode notmuch-hello-mode-map)
      (evilified-state-evilify notmuch-show-mode notmuch-show-stash-map)
      (evilified-state-evilify notmuch-show-mode notmuch-show-part-map)
      (evilified-state-evilify notmuch-show-mode notmuch-show-mode-map
               (kbd "N") 'notmuch-show-next-message
-              (kbd "n") 'notmuch-show-next-open-message)
+              (kbd "n") 'notmuch-show-next-open-message
+              (kbd "T") 'lehoff/notmuch-trash-show)
+
      (evilified-state-evilify notmuch-tree-mode notmuch-tree-mode-map)
      (evilified-state-evilify notmuch-search-mode notmuch-search-mode-map)
      (evilified-state-evilify notmuch-search-mode notmuch-search-mode-map
        (kbd "J") 'notmuch-jump-search
-       (kbd "L") 'notmuch-search-filter)
+       (kbd "L") 'notmuch-search-filter
+       (kbd "T") 'lehoff/notmuch-trash
+       (kbd "M") 'compose-mail-other-frame)
      ;; (evilify notmuch-hello-mode notmuch-hello-mode-map
      ;;          "J" 'notmuch-jump-search)
      ;; (evilify notmuch-search-mode notmuch-search-mode-map
@@ -64,7 +86,7 @@
      (defun lehoff/notmuch-remove-inbox-tag ()
        "archive by removing INBOX tag"
        (interactive (notmuch-search-interactive-region))
-       (notmuch-search-tag (list "+archive" "-INBOX") beg end))
+       (notmuch-search-tag (list "+archive" "-inbox") beg end))
 
      (evil-define-key 'normal notmuch-search-mode-map
        "F" 'lehoff/notmuch-remove-inbox-tag)
@@ -89,6 +111,26 @@
     (setq user-full-name "Torben Hoffmann")
     (setq user-mail-address "thoffmann@basho.com")
     (setq message-sendmail-f-is-evil 't)))
+
+
+  ;; from https://github.com/fgeller/emacs.d/blob/master/email.org
+  (add-hook 'notmuch-show-hook 'notmuch-show-prefer-html-over-text)
+  (defun notmuch-show-prefer-html-over-text ()
+    (interactive)
+    (let* ((text-button (save-excursion
+                          (goto-char (point-min))
+                          (search-forward "[ text/plain ]" (point-max) t)))
+           (html-button (save-excursion
+                          (goto-char (point-min))
+                          (search-forward "[ text/html (hidden) ]" (point-max) t))))
+      (when html-button
+        (save-excursion
+          (goto-char (- html-button 1))
+          (notmuch-show-toggle-part-invisibility)))
+      (when text-button
+        (save-excursion
+          (goto-char (- text-button 1))
+          (notmuch-show-toggle-part-invisibility)))))
   )
 
 
